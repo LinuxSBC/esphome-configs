@@ -23,7 +23,6 @@ switch:
       - lambda: id(led_pwm).set_level(id(led_brightness).state/100);
     on_turn_off:
       - lambda: id(led_pwm).set_level(0.0);
-    forced_hash: 261191305
 
 
 # https://esphome.io/components/select/index.html
@@ -44,7 +43,6 @@ select:
     initial_option: Power Status
     restore_value: true
     icon: mdi:led-on
-    forced_hash: 3104663617
     set_action:
       - script.execute: script_save_changes
     on_value:
@@ -137,5 +135,4 @@ number:
       - script.execute: script_save_changes
     on_value:
       - lambda: if ( id(led).state ) id(led_pwm).set_level(x/100);
-    forced_hash: 4192312897
 
