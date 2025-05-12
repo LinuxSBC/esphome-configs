@@ -1,0 +1,82 @@
+# https://esphome.io/guides/configuration-types.html#substitutions
+substitutions:
+  name: one-led-switch                     # **** CHANGE DEVICE NAME TO SOMETHING UNIQUE PER DEVICE.  RENAME YAML FILE TO SAME NAME.    ****
+                                           # **** USE DASHES (-) INSTEAD OF SPACES OR UNDERSCORE (_).  USE ONLY LOWER CASE LETTERS.     ****
+  friendly_name: Light switch with one LED # **** CHANGE FRIENDLY NAME TO SOMETHING UNIQUE PER DEVICE                                   ****
+
+  # https://esphome.io/components/switch/gpio.html?highlight=restore_mode
+  sub_restore_mode: RESTORE_DEFAULT_ON  # overwrite to change boot up behavior of relay
+
+  disable_entities: "true"     # set to "false" to have all entities show up in Home Assistant automatically
+  disable_webserver: "false"   # set to "true" to disable the webserver listening on port 80.
+
+  wifi_ap_timeout: 2min        # default to 2 minute timeout for yaml file as package.
+  sub_wifi_ssid: !secret wifi_ssid
+  sub_wifi_password: !secret wifi_password
+
+  # substitutions for scripts to execute based on button actions.
+  # the built-in automations for the button will still do everything they normally do even
+  # when these substitutions are redefined.  Redefining these will not stop the ui switch from toggling.
+  # The button configuration select entity must be set to disabled to stop the button from toggling the ui switch.
+  # The button press duration sensor will also still update even with these redefined.
+  # any length of hold can be implemented with just on_press and on_release using the following directions.  This
+  # is basically how this yaml file works.
+  #   * have a delay for the desired hold in the on_press script
+  #   * stop the on_press script in the on_release script
+  #   * place actions in the on_press script after the delay to perform them while still holding the button
+  #   * place actions in the on_release script, with the condition that the on_press script is not running, to
+  #     perform them on release of the button.
+  sub_on_press:                script_do_nothing # executes right when button is pressed
+  sub_on_release:              script_do_nothing # executes right when button is released
+  sub_on_triple_press:         script_do_nothing # executes when the button is triple pressed
+  sub_on_double_press:         script_do_nothing # executes when the button is double pressed
+  sub_on_single_press:         script_do_nothing # executes when the button is single pressed only, not held or double pressed
+  sub_on_hold:                 script_do_nothing # executes when the button is held for a threshold amount of time
+  sub_on_release_without_hold: script_do_nothing # executes when the button is released after a press that is under the hold threshold.
+  sub_wifi_reset_script:       script_wifi_reset # reset wifi credentials, overwrite to disable
+
+  # an extra script that, if running, will stop the relay from toggling on button release.
+  # used to not toggle when WiFi AP is re-enabled on update bin file.
+  sub_toggle_check: script_wifi_reset
+
+  # these will execute when ui_switch turns on and off, respectively.  like on_press and on_release above, built-in
+  # automations still all run.  Lights changing can be disabled through the config light entity effects.  Relay
+  # can be disabled by selecting always on or always off in the configuration select entity.  You can control the
+  # relay independently by toggling the select entity between always on and always off.
+  sub_on_turn_on:  script_do_nothing
+  sub_on_turn_off: script_do_nothing
+
+  # made this a substitution so that the update bin file and yaml compiled versions can have different defaults
+  default_button_config: "Toggle on Press"
+
+  # GPIO definitions
+  sub_button_pin:   GPIO0
+  sub_led_pin:      GPIO13
+  sub_relay_pin:    GPIO12
+
+  # button press substitutions
+  sub_double_press_max_gap: 333ms
+  sub_hold_time: 750ms
+  sub_button_sensor_duration: 500ms
+
+  # substitutions to control hass entities with press combos
+  hass_entity_single_press_share_state:           switch.kids_bedroom_lamp
+  hass_entity_double_press_share_state:           no.ne
+  hass_entity_triple_press_share_state:           no.ne
+  hass_entity_hold_share_state:                   no.ne
+  hass_entity_release_without_hold_share_state:   no.ne
+
+  hass_entity_single_press_toggle:           no.ne
+  hass_entity_double_press_toggle:           switch.kids_bedroom_lamp
+  hass_entity_triple_press_toggle:           no.ne
+  hass_entity_hold_toggle:                   no.ne
+  hass_entity_release_without_hold_toggle:   no.ne
+
+  # substitutions to sync lights with hass entities instead of UI switch
+  hass_entity_control_light:           no.ne
+  hass_entity_control_light_on_state:  'on'
+  hass_entity_control_light_off_state: 'off'
+
+
+packages:
+  switch_base: github://LinuxSBC/esphome-configs/switch-one-led.yaml
