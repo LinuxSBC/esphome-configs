@@ -54,6 +54,8 @@ select:
       - script.execute: script_set_power_leds
 
 
+# https://esphome.io/components/output/esp8266_pwm.html
+output:
 # pwm outputs for LEDs so they can be dimmed
   - platform: esp8266_pwm
     id: led_pwm
