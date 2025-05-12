@@ -136,3 +136,14 @@ number:
     on_value:
       - lambda: if ( id(led).state ) id(led_pwm).set_level(x/100);
 
+
+# emulate status_led
+# https://esphome.io/guides/automations.html#interval-component
+interval:
+  - interval: 5s
+    then:
+    - lambda: |-
+        if ( ( ((App.get_app_state() & STATUS_LED_ERROR  ) != 0u) ||
+               ((App.get_app_state() & STATUS_LED_WARNING) != 0u) )
+            && !id(blink_status_led).is_running() )
+          id(blink_status_led).execute();

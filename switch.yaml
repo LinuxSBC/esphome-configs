@@ -51,7 +51,6 @@ substitutions:
 
   # GPIO definitions
   sub_button_pin:   GPIO0
-  sub_led_pin:      GPIO13
   sub_relay_pin:    GPIO12
 
   # button press substitutions
@@ -365,20 +364,6 @@ switch:
         - script.execute: script_set_power_leds
         - script.execute: $sub_on_turn_off
 
-    # https://esphome.io/components/switch/template.html
-  - platform: template
-    id: led
-    name: LED
-    optimistic: true
-    entity_category: config
-    disabled_by_default: $disable_entities
-    icon: mdi:led-outline
-    restore_mode: RESTORE_DEFAULT_OFF
-    on_turn_on:
-      - lambda: id(led_pwm).set_level(id(led_brightness).state/100);
-    on_turn_off:
-      - lambda: id(led_pwm).set_level(0.0);
-
 
 # https://esphome.io/components/select/index.html
 # https://esphome.io/components/select/template.html
@@ -424,31 +409,6 @@ select:
     entity_category: config
     set_action:
       - script.execute: script_save_changes
-
-  - platform: template
-    name: LED Config
-    id: select_led
-    optimistic: true
-    entity_category: config
-    options:
-      - Power Status
-      - No Automation
-      - Invert Power Status
-      - Error Status
-      - Error and Power
-      - Error and Invert Power
-    initial_option: Power Status
-    restore_value: true
-    icon: mdi:led-on
-    set_action:
-      - script.execute: script_save_changes
-    on_value:
-      - if:
-          condition:
-            - lambda: return ( x == "Error Status" );
-          then:
-            - switch.turn_off: led
-      - script.execute: script_set_power_leds
 
   - platform: template
     name: Boot State
@@ -532,58 +492,13 @@ output:
             }
           }
 
-# pwm outputs for LEDs so they can be dimmed
-  - platform: esp8266_pwm
-    id: led_pwm
-    frequency: 200 Hz
-    pin: $sub_led_pin
-    inverted: true
-
 
 # https://esphome.io/guides/automations.html#script-component
 script:
 
     # sets LEDs to proper state based on LED configuration and relay state
   - id: script_set_power_leds
-    then:
-      - lambda: |-
-          // if led follows power status
-          if ( (id(select_led).state == "Power Status") || (id(select_led).state == "Error and Power") ) {
-            id(led).publish_state(id(relay).state); }
-
-          // if led follows inverse of power status
-          else if ( (id(select_led).state == "Invert Power Status") || (id(select_led).state == "Error and Invert Power") ) {
-            id(led).publish_state(!id(relay).state); }
-
-      - script.execute: script_save_changes
-
-  - id: blink_status_led
-    mode: queued
-    then:
-
-      - lambda: |-
-          // turn on LED if configured for error status
-          if ( (id(select_led).state == "Error Status")  ||
-               (id(select_led).state == "Error and Power") ||
-               (id(select_led).state == "Error and Invert Power") ) {
-            id(led).turn_on(); }
-      - delay: 350ms
-
-      - lambda: |-
-          // turn off LED if configured for error status
-          if ( (id(select_led).state == "Error Status")  ||
-               (id(select_led).state == "Error and Power") ||
-               (id(select_led).state == "Error and Invert Power") ) {
-            id(led).turn_off(); }
-      - delay: 1150ms
-
-      - if:
-          condition:
-            - lambda: return ( ( (App.get_app_state() & STATUS_LED_ERROR) != 0u) || ((App.get_app_state() & STATUS_LED_WARNING) != 0u) );
-          then:
-            - script.execute: blink_status_led # repeat as long as error/warning exists
-          else:
-            - script.execute: script_set_power_leds # done with status LED, restore light power status
+    then: # intentionally unset in base switch
   - id: script_wifi_reset
     then:
       - logger.log: "------------------->>>>>>>>>>>>>>>>>   HELD BUTTON 30 SECONDS, FORCING AP"
@@ -598,11 +513,7 @@ script:
 
     # blink LED forever.  Used when button is held to re-enable AP.  Stops blinking because plug restarts.
   - id: blink_led
-    mode: queued
     then:
-      - switch.toggle: led
-      - delay: 333ms
-      - script.execute: blink_led
 
   - id: script_do_nothing
     then:
@@ -802,28 +713,6 @@ sensor:
     icon: mdi:timer-outline
 
 
-# https://esphome.io/components/number/index.html
-# https://esphome.io/components/number/template.html
-number:
-  - platform: template
-    name: LED Brightness
-    min_value: 1
-    max_value: 100
-    step: 1
-    initial_value: 75
-    id: led_brightness
-    entity_category: config
-    optimistic: true
-    restore_value: true
-    unit_of_measurement: "%"
-    mode: slider
-    icon: mdi:brightness-percent
-    set_action:
-      - script.execute: script_save_changes
-    on_value:
-      - lambda: if ( id(led).state ) id(led_pwm).set_level(x/100);
-
-
 # Send IP Address to HA
 # https://esphome.io/components/text_sensor/wifi_info.html
 text_sensor:
@@ -831,15 +720,3 @@ text_sensor:
     ip_address:
       name: IP Address
       disabled_by_default: $disable_entities
-
-
-# emulate status_led
-# https://esphome.io/guides/automations.html#interval-component
-interval:
-  - interval: 5s
-    then:
-    - lambda: |-
-        if ( ( ((App.get_app_state() & STATUS_LED_ERROR  ) != 0u) ||
-               ((App.get_app_state() & STATUS_LED_WARNING) != 0u) )
-            && !id(blink_status_led).is_running() )
-          id(blink_status_led).execute();
